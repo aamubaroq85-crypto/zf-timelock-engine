@@ -1,97 +1,161 @@
 import time
+import random
 import streamlit as st
 import pandas as pd
 import requests
 
 # Konfigurasi Halaman Streamlit
 st.set_page_config(
-    page_title="ZF-Core V16.3-OMNI | Time-Lock Engine",
+    page_title="ZF-Core V16.3-OMNI | Integrated Engine",
     page_icon="⚡",
     layout="wide"
 )
 
-st.title("⚡ Microsecond Time-Lock Engine (ZF-Tech No. 2)")
-st.markdown("Sistem sinkronisasi temporal presisi tinggi berbasis standar **Time-Lock 2326**.")
+st.title("⚡ ZF-Core Omni-Engine (Tech No. 2, 3, 16, & 33)")
+st.markdown("Integrasi Sinkronisasi Temporal, Filter Jitter, Depth Mapper, dan Kalkulasi ZF-Score.")
 
 # Panel Kontrol Samping
-st.sidebar.header("Pengaturan Sesi")
+st.sidebar.header("Parameter Ekosistem")
 selected_pair = st.sidebar.selectbox("Pilih Aset Pasar", ["BTCUSDT", "ETHUSDT", "SOLUSDT"])
-refresh_rate = st.sidebar.slider("Kecepatan Segar Data (detik)", 1, 5, 2)
+refresh_rate = st.sidebar.slider("Interval Refresh (detik)", 1, 5, 2)
+jitter_threshold = st.sidebar.slider("Ambang Batas Jitter Filter", 0.0001, 0.0050, 0.0010, format="%.4f")
 
-# Inisialisasi State Session untuk menyimpan riwayat data
+# Inisialisasi State Session
 if "data_log" not in st.session_state:
     st.session_state.data_log = []
+if "last_price" not in st.session_state:
+    st.session_state.last_price = 0.0
 
-class MicrosecondTimeLockEngine:
+class ZFIntegratedEngine:
     def __init__(self, time_lock_version: str = "Time-Lock 2326"):
         self.time_lock_version = time_lock_version
 
     def get_precise_timestamp(self) -> int:
-        """Menghasilkan stempel waktu presisi tinggi dalam mikrosekon."""
+        """Teknologi No. 2: Microsecond Time-Lock Engine"""
         return (time.time_ns() // 1000)
 
-    def lock_and_sync_packet(self, raw_data: dict) -> dict:
-        arrival_micro_ts = self.get_precise_timestamp()
+    def filter_noise_jitter(self, current_price: float, previous_price: float, threshold: float) -> tuple:
+        """Teknologi No. 3: Noise Filter Jitter"""
+        if previous_price == 0.0:
+            return current_price, False
+        
+        diff = abs(current_price - previous_price)
+        is_noise = diff < threshold
+        # Jika dianggap noise mikro, tahan harga di posisi sebelumnya
+        filtered_price = previous_price if is_noise else current_price
+        return filtered_price, is_noise
+
+    def calculate_zf_score(self, price_deviation: float) -> float:
+        """Teknologi No. 33: ZF-Score Engine (Skala 0 - 1)"""
+        # Semakin kecil deviasi, semakin stabil sistem (mendekati 0.0)
+        # Jika anomali/volatilitas tinggi, skor mendekati 1.0
+        score = 1.0 / (1.0 + (1.0 / (max(price_deviation, 0.00001))))
+        return round(min(max(score, 0.0), 1.0), 4)
+
+    def map_depth_and_structure(self, price: float) -> dict:
+        """Teknologi No. 16: ZF-Depth Mapper (Simulasi Kedalaman Order Book)"""
+        bid_depth = round(random.uniform(10.5, 50.2), 2)
+        ask_depth = round(random.uniform(10.5, 50.2), 2)
+        imbalance_ratio = round(bid_depth / (bid_depth + ask_depth), 2)
         return {
-            "temporal_lock": self.time_lock_version,
-            "synchronized_timestamp_us": int(arrival_micro_ts),
-            "symbol": raw_data.get("symbol", selected_pair),
-            "price": float(raw_data.get("price", 0.0)),
-            "status": "LOCKED_SYNCHRONIZED"
+            "bid_depth": bid_depth,
+            "ask_depth": ask_depth,
+            "imbalance_ratio": imbalance_ratio
         }
 
-engine = MicrosecondTimeLockEngine()
+engine = ZFIntegratedEngine()
 
-# Layout Utama Dasbor
-col1, col2 = st.columns([2, 1])
+# Layout Utama Dasbor (3 Kolom Utama)
+col_top1, col_top2, col_top3 = st.columns(3)
 
-with col1:
-    st.subheader(f"Arus Data Real-Time: {selected_pair}")
+with col_top1:
+    metric_time = st.empty()
+with col_top2:
+    metric_zf = st.empty()
+with col_top3:
+    metric_noise = st.empty()
+
+st.markdown("---")
+col_view1, col_view2 = st.columns([2, 1])
+
+with col_view1:
+    st.subheader(f"Arus Data Terfilter: {selected_pair}")
     table_placeholder = st.empty()
 
-with col2:
-    st.subheader("Status Tensor Waktu")
-    metric_placeholder = st.empty()
+with col_view2:
+    st.subheader("Matriks Kedalaman (Depth)")
+    depth_placeholder = st.empty()
 
-# Mengambil data menggunakan REST API Publik Binance (Alternatif stabil di Cloud)
-def fetch_latest_price(symbol):
+# Fungsi Pengambilan Data & Eksekusi Pipeline
+def fetch_and_process(symbol):
     try:
         url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
         response = requests.get(url, timeout=3)
         if response.status_code == 200:
-            return response.json()
+            raw_data = response.json()
+            raw_price = float(raw_data.get("price", 0.0))
+            
+            # 1. Teknologi No. 2: Time-Lock Timestamp
+            timestamp_us = engine.get_precise_timestamp()
+            
+            # 2. Teknologi No. 3: Filter Jitter Noise
+            clean_price, is_noise = engine.filter_noise_jitter(
+                raw_price, st.session_state.last_price, jitter_threshold
+            )
+            
+            # Hitung deviasi untuk ZF-Score
+            deviation = abs(raw_price - st.session_state.last_price) if st.session_state.last_price > 0 else 0.0
+            st.session_state.last_price = clean_price
+            
+            # 3. Teknologi No. 33: ZF-Score Stabilitas
+            zf_score = engine.calculate_zf_score(deviation)
+            
+            # 4. Teknologi No. 16: Depth Mapper
+            depth_data = engine.map_depth_and_structure(clean_price)
+            
+            packet = {
+                "timestamp_us": timestamp_us,
+                "raw_price": raw_price,
+                "clean_price": clean_price,
+                "filtered_noise": "YES" if is_noise else "NO",
+                "zf_score": zf_score,
+                "bid_vol": depth_data["bid_depth"],
+                "ask_vol": depth_data["ask_depth"],
+                "ratio": depth_data["imbalance_ratio"]
+            }
+            return packet
     except Exception as e:
         st.warning(f"Menunggu sinkronisasi jaringan: {e}")
     return None
 
-# Tombol Kontrol Utama di HP
-run_engine = st.toggle("Aktifkan Microsecond Time-Lock Stream", value=False)
+# Tombol Kontrol Utama
+run_engine = st.toggle("Aktifkan Ekosistem ZF-Core (Omni Mode)", value=False)
 
 if run_engine:
-    st.info("Engine aktif dan menyinkronkan stempel waktu temporal...")
-    
-    # Loop aman untuk Streamlit Cloud
     while run_engine:
-        raw_data = fetch_latest_price(selected_pair)
-        if raw_data:
-            synced = engine.lock_and_sync_packet(raw_data)
-            
-            # Masukkan ke riwayat log
-            st.session_state.data_log.insert(0, synced)
+        packet = fetch_and_process(selected_pair)
+        if packet:
+            # Masukkan ke log riwayat
+            st.session_state.data_log.insert(0, packet)
             if len(st.session_state.data_log) > 15:
                 st.session_state.data_log.pop()
             
-            # Perbarui Tampilan Tabel & Metrik
+            # Perbarui Metrik Utama di Atas
+            metric_time.metric("Time-Lock (us)", packet["timestamp_us"])
+            metric_zf.metric("ZF-Score Stabilitas", packet["zf_score"], delta="Aman (<0.99)" if packet["zf_score"] < 0.99 else "Kritis!")
+            metric_noise.metric("Status Noise Jitter", packet["filtered_noise"])
+            
+            # Perbarui Tabel Riwayat & Depth Mapper
             df = pd.DataFrame(st.session_state.data_log)
             table_placeholder.dataframe(df, use_container_width=True)
             
-            metric_placeholder.metric(
-                label="Timestamp Terkunci (us)", 
-                value=synced["synchronized_timestamp_us"],
-                delta=f"Harga: {synced['price']}"
-            )
-        
+            depth_placeholder.json({
+                "Bid Volume": packet["bid_vol"],
+                "Ask Volume": packet["ask_vol"],
+                "Bid/Ask Imbalance Ratio": packet["ratio"]
+            })
+            
         time.sleep(refresh_rate)
         st.rerun()
 else:
-    st.warning("Silakan aktifkan tombol sakelar di atas untuk memulai aliran data terenkripsi.")
+    st.info("Nyalakan tombol sakelar di atas untuk mengaktifkan pemrosesan serentak 4 modul teknologi ZF-Core.")
