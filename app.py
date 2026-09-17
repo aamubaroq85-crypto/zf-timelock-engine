@@ -36,7 +36,6 @@ stop_loss_pct = st.sidebar.slider("Ambang Batas Dynamic Stop-Loss (%)", 0.5, 5.0
 if "data_log" not in st.session_state:
     st.session_state.data_log = []
 if "last_price" not in st.session_state:
-    # Berikan nilai awal harga berdasarkan pair agar langsung valid
     st.session_state.last_price = 65000.0 if "BTC" in selected_pair else (3500.0 if "ETH" in selected_pair else 150.0)
 
 class ZFMobileTensorEngine:
@@ -78,7 +77,7 @@ class ZFMobileTensorEngine:
 
 engine = ZFMobileTensorEngine()
 
-# Fungsi Pengambilan Data (Hibrida dengan fallback otomatis ke simulator lokal)
+# Fungsi Pengambilan Data (Hibrida API & Simulator Lokal)
 def fetch_and_process_mobile(symbol, capital, sl_pct):
     raw_price = 0.0
     try:
@@ -88,9 +87,8 @@ def fetch_and_process_mobile(symbol, capital, sl_pct):
             raw_data = response.json()
             raw_price = float(raw_data.get("price", 0.0))
     except Exception:
-        pass # Abaikan error koneksi dan gunakan fallback generator lokal di bawah
+        pass
     
-    # Jika API gagal/kosong, gunakan generator harga berbasis tren tensor lokal
     if raw_price == 0.0:
         base = 65000.0 if "BTC" in symbol else (3500.0 if "ETH" in symbol else 150.0)
         last = st.session_state.last_price if st.session_state.last_price > 0 else base
@@ -184,7 +182,14 @@ if not df.empty:
     )
 else:
     st.button("📥 Unduh Riwayat Sesi (CSV)", disabled=True)
-    # --- FOOTER APLIKASI ---
+
+st.subheader(f"📋 Arus Data Sesi Berjalan: {selected_pair}")
+if not df.empty:
+    st.dataframe(df, use_container_width=True)
+else:
+    st.info("Belum ada data riwayat arus yang tercatat.")
+
+# --- FOOTER APLIKASI (Posisinya dipindah ke bagian paling bawah) ---
 st.markdown("---")
 st.markdown(
     "<div style='text-align: center; color: gray; font-size: 0.85em;'>"
@@ -193,10 +198,3 @@ st.markdown(
     "</div>",
     unsafe_allow_html=True
 )
-
-
-st.subheader(f"📋 Arus Data Sesi Berjalan: {selected_pair}")
-if not df.empty:
-    st.dataframe(df, use_container_width=True)
-else:
-    st.info("Belum ada data riwayat arus yang tercatat.")
