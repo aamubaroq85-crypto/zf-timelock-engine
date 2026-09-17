@@ -184,6 +184,16 @@ if not df.empty:
     )
 else:
     st.button("📥 Unduh Riwayat Sesi (CSV)", disabled=True)
+    # --- FOOTER APLIKASI ---
+st.markdown("---")
+st.markdown(
+    "<div style='text-align: center; color: gray; font-size: 0.85em;'>"
+    "<b>Aa Baroq Applied Technologies</b> &copy; 2026<br>"
+    "ZF-Core Mobile Tensor Engine | All Rights Reserved"
+    "</div>",
+    unsafe_allow_html=True
+)
+
 
 st.subheader(f"📋 Arus Data Sesi Berjalan: {selected_pair}")
 if not df.empty:
