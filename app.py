@@ -18,7 +18,6 @@ st.markdown("Dasbor Kuantitatif: Sinkronisasi Temporal, Jitter Filter, Tensor Ch
 # Panel Kontrol Samping (Sidebar)
 st.sidebar.header("Parameter Ekosistem")
 selected_pair = st.sidebar.selectbox("Pilih Aset Pasar", ["BTCUSDT", "ETHUSDT", "SOLUSDT"])
-refresh_rate = st.sidebar.slider("Interval Refresh (detik)", 1, 5, 2)
 total_capital = st.sidebar.number_input("Total Modal Simulasi ($)", min_value=100.0, max_value=100000.0, value=1000.0, step=100.0)
 
 st.sidebar.markdown("---")
@@ -82,29 +81,8 @@ class ZFMobileTensorEngine:
 
 engine = ZFMobileTensorEngine()
 
-# --- TATA LETAK VERTIKAL (RAMAH HP) ---
-
-st.markdown("### 📊 Metrik Utama Sesi")
-m1, m2 = st.columns(2)
-with m1:
-    metric_time = st.empty()
-    metric_zf = st.empty()
-with m2:
-    metric_alloc = st.empty()
-    metric_sl = st.empty()
-
-st.markdown("---")
-st.subheader("📈 Visualisasi Tensor: Tren Harga Bersih")
-chart_placeholder = st.empty()
-
-st.subheader("🛡️ Sistem Peringatan Dini")
-alert_placeholder = st.empty()
-
-st.subheader("📥 Ekspor Data")
-download_placeholder = st.empty()
-
-st.subheader(f"📋 Arus Data Sesi Berjalan: {selected_pair}")
-table_placeholder = st.empty()
+# Tombol Kontrol Utama (Toggle)
+run_engine = st.toggle("Aktifkan Tensor & Analitik Sesi (Omni-Mode)", value=False)
 
 # Fungsi Pengambilan Data & Pipeline Tensor
 def fetch_and_process_mobile(symbol, capital, sl_pct):
@@ -142,51 +120,62 @@ def fetch_and_process_mobile(symbol, capital, sl_pct):
         st.warning(f"Menunggu sinkronisasi jaringan: {e}")
     return None
 
-# Tombol Kontrol Utama (Toggle)
-run_engine = st.toggle("Aktifkan Tensor & Analitik Sesi (Omni-Mode)", value=False)
-
 if run_engine:
-    st.info("Engine aktif dan memproses arus data secara real-time...")
-    
+    st.info("Engine aktif dan memproses arus data...")
     packet = fetch_and_process_mobile(selected_pair, total_capital, stop_loss_pct)
     if packet:
         st.session_state.data_log.insert(0, packet)
         if len(st.session_state.data_log) > 30:
             st.session_state.data_log.pop()
-        
-        # Perbarui Metrik
-        metric_time.metric("Time-Lock (us)", packet["Timestamp_us"])
-        metric_zf.metric("ZF-Score", packet["ZF_Score"])
-        metric_alloc.metric("Alokasi Modal ($)", packet["Alokasi_Modal"])
-        metric_sl.metric("Dynamic Stop-Loss", packet["Stop_Loss"])
-        
-        df = pd.DataFrame(st.session_state.data_log)
-        
-        # Tampilkan Grafik Tensor Full-Width
-        if not df.empty:
-            chart_placeholder.line_chart(df.set_index("Waktu")[["Harga_Bersih"]])
-        
-        # Peringatan Dini
-        if "KRITIS" in packet["Status"]:
-            alert_placeholder.error(packet["Status"])
-        elif "WASPADA" in packet["Status"]:
-            alert_placeholder.warning(packet["Status"])
-        else:
-            alert_placeholder.success(packet["Status"])
-            
-        # Tombol Unduh CSV
-        csv_data = df.to_csv(index=False).encode('utf-8')
-        download_placeholder.download_button(
-            label="📥 Unduh Riwayat Sesi (CSV)",
-            data=csv_data,
-            file_name=f"ZF_Core_Log_{selected_pair}.csv",
-            mime="text/csv"
-        )
-        
-        # Tabel Arus Data
-        table_placeholder.dataframe(df, use_container_width=True)
-    
-    time.sleep(refresh_rate)
-    st.rerun()
+
+# --- TATA LETAK TAMPILAN UTAMA (Langsung Tampil) ---
+st.markdown("### 📊 Metrik Utama Sesi")
+if len(st.session_state.data_log) > 0:
+    latest = st.session_state.data_log[0]
+    m1, m2 = st.columns(2)
+    with m1:
+        st.metric("Time-Lock (us)", latest["Timestamp_us"])
+        st.metric("ZF-Score", latest["ZF_Score"])
+    with m2:
+        st.metric("Alokasi Modal ($)", latest["Alokasi_Modal"])
+        st.metric("Dynamic Stop-Loss", latest["Stop_Loss"])
 else:
-    st.info("Nyalakan tombol sakelar di atas untuk memulai pemantauan dasbor.")
+    st.info("Nyalakan sakelar di atas untuk mengambil data metrik.")
+
+st.markdown("---")
+st.subheader("📈 Visualisasi Tensor: Tren Harga Bersih")
+df = pd.DataFrame(st.session_state.data_log)
+if not df.empty and "Waktu" in df.columns:
+    st.line_chart(df.set_index("Waktu")[["Harga_Bersih"]])
+else:
+    st.caption("Grafik akan muncul setelah data terekam.")
+
+st.subheader("🛡️ Sistem Peringatan Dini")
+if not df.empty:
+    status_terkini = df.iloc[0]["Status"]
+    if "KRITIS" in status_terkini:
+        st.error(status_terkini)
+    elif "WASPADA" in status_terkini:
+        st.warning(status_terkini)
+    else:
+        st.success(status_terkini)
+else:
+    st.info("Status sistem siaga.")
+
+st.subheader("📥 Ekspor Data")
+if not df.empty:
+    csv_data = df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="📥 Unduh Riwayat Sesi (CSV)",
+        data=csv_data,
+        file_name=f"ZF_Core_Log_{selected_pair}.csv",
+        mime="text/csv"
+    )
+else:
+    st.button("📥 Unduh Riwayat Sesi (CSV)", disabled=True)
+
+st.subheader(f"📋 Arus Data Sesi Berjalan: {selected_pair}")
+if not df.empty:
+    st.dataframe(df, use_container_width=True)
+else:
+    st.info("Belum ada data riwayat arus yang tercatat.")
