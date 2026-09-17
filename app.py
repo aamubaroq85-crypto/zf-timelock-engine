@@ -18,7 +18,6 @@ st.markdown("Dasbor Kuantitatif: Sinkronisasi Temporal, Jitter Filter, Tensor Ch
 # Panel Kontrol Samping (Sidebar)
 st.sidebar.header("Parameter Ekosistem")
 selected_pair = st.sidebar.selectbox("Pilih Aset Pasar", ["BTCUSDT", "ETHUSDT", "SOLUSDT"])
-refresh_rate = st.sidebar.slider("Interval Refresh (detik)", 1, 5, 2)
 total_capital = st.sidebar.number_input("Total Modal Simulasi ($)", min_value=100.0, max_value=100000.0, value=1000.0, step=100.0)
 
 st.sidebar.markdown("---")
@@ -114,18 +113,26 @@ def fetch_and_process_mobile(symbol, capital, sl_pct):
         st.warning(f"Menunggu sinkronisasi jaringan: {e}")
     return None
 
-# Tombol Kontrol Utama (Toggle) di Bagian Atas
-run_engine = st.toggle("Aktifkan Tensor & Analitik Sesi (Omni-Mode)", value=False)
+# Tombol Aksi Utama di Layar (Lebih responsif di HP)
+col_btn1, col_btn2 = st.columns(2)
+with col_btn1:
+    btn_tarik = st.button("🚀 Tarik Data Real-Time")
+with col_btn2:
+    btn_reset = st.button("🔄 Reset Log")
 
-# Jika toggle aktif, langsung ambil data baru dan masukkan ke log
-if run_engine:
+if btn_reset:
+    st.session_state.data_log = []
+    st.session_state.last_price = 0.0
+    st.success("Log berhasil dibersihkan.")
+
+if btn_tarik:
     packet = fetch_and_process_mobile(selected_pair, total_capital, stop_loss_pct)
     if packet:
         st.session_state.data_log.insert(0, packet)
         if len(st.session_state.data_log) > 30:
             st.session_state.data_log.pop()
 
-# --- TATA LETAK TAMPILAN UTAMA (Render Komponen) ---
+# --- TATA LETAK TAMPILAN UTAMA ---
 st.markdown("### 📊 Metrik Utama Sesi")
 if len(st.session_state.data_log) > 0:
     latest = st.session_state.data_log[0]
@@ -137,7 +144,7 @@ if len(st.session_state.data_log) > 0:
         st.metric("Alokasi Modal ($)", latest["Alokasi_Modal"])
         st.metric("Dynamic Stop-Loss", latest["Stop_Loss"])
 else:
-    st.info("Nyalakan sakelar di atas untuk mengambil data metrik.")
+    st.info("Tekan tombol **'🚀 Tarik Data Real-Time'** di atas untuk mengambil data metrik.")
 
 st.markdown("---")
 st.subheader("📈 Visualisasi Tensor: Tren Harga Bersih")
@@ -176,8 +183,3 @@ if not df.empty:
     st.dataframe(df, use_container_width=True)
 else:
     st.info("Belum ada data riwayat arus yang tercatat.")
-
-# Perulangan otomatis jika toggle aktif
-if run_engine:
-    time.sleep(refresh_rate)
-    st.rerun()
