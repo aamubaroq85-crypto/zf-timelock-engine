@@ -7,22 +7,22 @@ import datetime
 
 # Konfigurasi Halaman Streamlit
 st.set_page_config(
-    page_title="ZF-Core V16.4-OMNI | Advanced Tensor & History Engine",
+    page_title="ZF-Core V16.4-OMNI | Mobile Tensor Engine",
     page_icon="📈",
-    layout="wide"
+    layout="centered"
 )
 
-st.title("📈 ZF-Core Omni-Engine + Tensor Visualizer & History Log")
-st.markdown("Integrasi Modul Stabilitas Temporal, Jitter Filter, Tensor Line Chart, Peringatan Dini, serta Unduh Log Riwayat CSV.")
+st.title("📈 ZF-Core Mobile Tensor Engine")
+st.markdown("Dasbor Kuantitatif: Sinkronisasi Temporal, Jitter Filter, Tensor Chart, Peringatan Dini, & CSV Log.")
 
 # Panel Kontrol Samping (Sidebar)
-st.sidebar.header("Parameter Ekosistem & Analitik")
+st.sidebar.header("Parameter Ekosistem")
 selected_pair = st.sidebar.selectbox("Pilih Aset Pasar", ["BTCUSDT", "ETHUSDT", "SOLUSDT"])
 refresh_rate = st.sidebar.slider("Interval Refresh (detik)", 1, 5, 2)
 total_capital = st.sidebar.number_input("Total Modal Simulasi ($)", min_value=100.0, max_value=100000.0, value=1000.0, step=100.0)
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("Pengaturan Risiko & Ambang Batas")
+st.sidebar.subheader("Pengaturan Risiko")
 jitter_threshold = st.sidebar.number_input(
     "Ambang Batas Jitter Filter",
     min_value=0.0001,
@@ -39,7 +39,7 @@ if "data_log" not in st.session_state:
 if "last_price" not in st.session_state:
     st.session_state.last_price = 0.0
 
-class ZFTensorAdvancedEngine:
+class ZFMobileTensorEngine:
     def __init__(self, time_lock_version: str = "Time-Lock 2326"):
         self.time_lock_version = time_lock_version
 
@@ -67,9 +67,8 @@ class ZFTensorAdvancedEngine:
         allocated_capital = round(capital * risk_multiplier, 2)
         stop_loss_price = round(current_price * (1.0 - (sl_pct / 100.0)), 4)
         
-        # Peringatan Dini / Alert System (Kategori V)
         if zf_score >= 0.85:
-            status_risiko = "⚠️ PERINGATAN KRITIS: Volatilitas Tinggi Terdeteksi!"
+            status_risiko = "⚠️ PERINGATAN KRITIS: Volatilitas Tinggi!"
         elif zf_score >= 0.50:
             status_risiko = "⚡ WASPADA: Fluktuasi Menengah"
         else:
@@ -81,39 +80,34 @@ class ZFTensorAdvancedEngine:
             "risk_status": status_risiko
         }
 
-engine = ZFTensorAdvancedEngine()
+engine = ZFMobileTensorEngine()
 
-# Layout Utama Dasbor (Metrik Baris Atas)
-col_top1, col_top2, col_top3, col_top4 = st.columns(4)
+# --- TATA LETAK VERTIKAL (RAMAH HP) ---
 
-with col_top1:
+st.markdown("### 📊 Metrik Utama Sesi")
+m1, m2 = st.columns(2)
+with m1:
     metric_time = st.empty()
-with col_top2:
     metric_zf = st.empty()
-with col_top3:
+with m2:
     metric_alloc = st.empty()
-with col_top4:
     metric_sl = st.empty()
 
 st.markdown("---")
-
-# Area Visualisasi Tensor (Grafik Tren / Line Chart)
-st.subheader("📊 Visualisasi Tensor: Tren Harga Bersih & Indeks Stabilitas ZF-Score")
+st.subheader("📈 Visualisasi Tensor: Tren Harga Bersih")
 chart_placeholder = st.empty()
 
-col_view1, col_view2 = st.columns([2, 1])
+st.subheader("🛡️ Sistem Peringatan Dini")
+alert_placeholder = st.empty()
 
-with col_view1:
-    st.subheader(f"Arus Data Sesi Berjalan: {selected_pair}")
-    table_placeholder = st.empty()
+st.subheader("📥 Ekspor Data")
+download_placeholder = st.empty()
 
-with col_view2:
-    st.subheader("Sistem Peringatan Dini & Log")
-    alert_placeholder = st.empty()
-    download_placeholder = st.empty()
+st.subheader(f"📋 Arus Data Sesi Berjalan: {selected_pair}")
+table_placeholder = st.empty()
 
 # Fungsi Pengambilan Data & Pipeline Tensor
-def fetch_and_process_tensor(symbol, capital, sl_pct):
+def fetch_and_process_mobile(symbol, capital, sl_pct):
     try:
         url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
         response = requests.get(url, timeout=3)
@@ -152,29 +146,25 @@ def fetch_and_process_tensor(symbol, capital, sl_pct):
 run_engine = st.toggle("Aktifkan Tensor & Analitik Sesi (Omni-Mode)", value=False)
 
 if run_engine:
-    st.info("Engine Tensor aktif dan merekam arus data riwayat secara real-time...")
+    st.info("Engine aktif dan memproses arus data secara real-time...")
     
-    packet = fetch_and_process_tensor(selected_pair, total_capital, stop_loss_pct)
+    packet = fetch_and_process_mobile(selected_pair, total_capital, stop_loss_pct)
     if packet:
         st.session_state.data_log.insert(0, packet)
-        if len(st.session_state.data_log) > 50: # Batasi memori sesi hingga 50 data terakhir
+        if len(st.session_state.data_log) > 30:
             st.session_state.data_log.pop()
         
-        # Perbarui Metrik Utama di Atas
+        # Perbarui Metrik
         metric_time.metric("Time-Lock (us)", packet["Timestamp_us"])
         metric_zf.metric("ZF-Score", packet["ZF_Score"])
         metric_alloc.metric("Alokasi Modal ($)", packet["Alokasi_Modal"])
         metric_sl.metric("Dynamic Stop-Loss", packet["Stop_Loss"])
         
-        # Konversi Log ke DataFrame untuk Visualisasi & Tabel
         df = pd.DataFrame(st.session_state.data_log)
         
-        # Tampilkan Grafik Tren Harga Bersih (Tensor Visualization)
+        # Tampilkan Grafik Tensor Full-Width
         if not df.empty:
             chart_placeholder.line_chart(df.set_index("Waktu")[["Harga_Bersih"]])
-        
-        # Perbarui Tabel Log Arus Data
-        table_placeholder.dataframe(df, use_container_width=True)
         
         # Peringatan Dini
         if "KRITIS" in packet["Status"]:
@@ -184,16 +174,19 @@ if run_engine:
         else:
             alert_placeholder.success(packet["Status"])
             
-        # Tombol Unduh Log Riwayat CSV
+        # Tombol Unduh CSV
         csv_data = df.to_csv(index=False).encode('utf-8')
         download_placeholder.download_button(
             label="📥 Unduh Riwayat Sesi (CSV)",
             data=csv_data,
-            file_name=f"ZF_Core_Log_{selected_pair}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            file_name=f"ZF_Core_Log_{selected_pair}.csv",
             mime="text/csv"
         )
+        
+        # Tabel Arus Data
+        table_placeholder.dataframe(df, use_container_width=True)
     
     time.sleep(refresh_rate)
     st.rerun()
 else:
-    st.info("Nyalakan tombol sakelar di atas untuk memulai pemantauan grafik tensor dan perekaman log riwayat.")
+    st.info("Nyalakan tombol sakelar di atas untuk memulai pemantauan dasbor.")
