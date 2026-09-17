@@ -44,11 +44,9 @@ class ZFMobileTensorEngine:
         self.time_lock_version = time_lock_version
 
     def get_precise_timestamp(self) -> int:
-        """Teknologi No. 2: Microsecond Time-Lock Engine"""
         return (time.time_ns() // 1000)
 
     def filter_noise_jitter(self, current_price: float, previous_price: float, threshold: float) -> tuple:
-        """Teknologi No. 3: Noise Filter Jitter"""
         if previous_price == 0.0:
             return current_price, False
         diff = abs(current_price - previous_price)
@@ -57,12 +55,10 @@ class ZFMobileTensorEngine:
         return filtered_price, is_noise
 
     def calculate_zf_score(self, price_deviation: float) -> float:
-        """Teknologi No. 33: ZF-Score Engine (Skala 0 - 1)"""
         score = 1.0 / (1.0 + (1.0 / (max(price_deviation, 0.00001))))
         return round(min(max(score, 0.0), 1.0), 4)
 
     def evaluate_risk_protocols(self, current_price: float, zf_score: float, capital: float, sl_pct: float) -> dict:
-        """Teknologi No. 51 & 52: Dynamic Stop-Loss & ZF-Score Capital Allocator"""
         risk_multiplier = max(0.1, 1.0 - zf_score)
         allocated_capital = round(capital * risk_multiplier, 2)
         stop_loss_price = round(current_price * (1.0 - (sl_pct / 100.0)), 4)
@@ -81,9 +77,6 @@ class ZFMobileTensorEngine:
         }
 
 engine = ZFMobileTensorEngine()
-
-# Tombol Kontrol Utama (Toggle)
-run_engine = st.toggle("Aktifkan Tensor & Analitik Sesi (Omni-Mode)", value=False)
 
 # Fungsi Pengambilan Data & Pipeline Tensor
 def fetch_and_process_mobile(symbol, capital, sl_pct):
@@ -121,7 +114,10 @@ def fetch_and_process_mobile(symbol, capital, sl_pct):
         st.warning(f"Menunggu sinkronisasi jaringan: {e}")
     return None
 
-# Eksekusi Otomatis Jika Toggle Aktif
+# Tombol Kontrol Utama (Toggle) di Bagian Atas
+run_engine = st.toggle("Aktifkan Tensor & Analitik Sesi (Omni-Mode)", value=False)
+
+# Jika toggle aktif, langsung ambil data baru dan masukkan ke log
 if run_engine:
     packet = fetch_and_process_mobile(selected_pair, total_capital, stop_loss_pct)
     if packet:
@@ -129,7 +125,7 @@ if run_engine:
         if len(st.session_state.data_log) > 30:
             st.session_state.data_log.pop()
 
-# --- TATA LETAK TAMPILAN UTAMA ---
+# --- TATA LETAK TAMPILAN UTAMA (Render Komponen) ---
 st.markdown("### 📊 Metrik Utama Sesi")
 if len(st.session_state.data_log) > 0:
     latest = st.session_state.data_log[0]
@@ -181,7 +177,7 @@ if not df.empty:
 else:
     st.info("Belum ada data riwayat arus yang tercatat.")
 
-# Pembaruan berkala otomatis jika toggle aktif
+# Perulangan otomatis jika toggle aktif
 if run_engine:
     time.sleep(refresh_rate)
     st.rerun()
