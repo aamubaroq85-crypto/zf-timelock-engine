@@ -14,11 +14,24 @@ st.set_page_config(
 st.title("⚡ ZF-Core Omni-Engine (Tech No. 2, 3, 16, & 33)")
 st.markdown("Integrasi Sinkronisasi Temporal, Filter Jitter, Depth Mapper, dan Kalkulasi ZF-Score.")
 
-# Panel Kontrol Samping
+# Panel Kontrol Samping (Sidebar)
 st.sidebar.header("Parameter Ekosistem")
 selected_pair = st.sidebar.selectbox("Pilih Aset Pasar", ["BTCUSDT", "ETHUSDT", "SOLUSDT"])
 refresh_rate = st.sidebar.slider("Interval Refresh (detik)", 1, 5, 2)
-jitter_threshold = st.sidebar.slider("Ambang Batas Jitter Filter", 0.0001, 0.0050, 0.0010, format="%.4f")
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("Pengaturan Jitter")
+
+# Menggunakan number_input agar mudah dikontrol lewat HP tanpa macet
+jitter_threshold = st.sidebar.number_input(
+    "Ambang Batas Jitter Filter",
+    min_value=0.0001,
+    max_value=0.0050,
+    value=0.0010,
+    step=0.0001,
+    format="%.4f",
+    key="jitter_input"
+)
 
 # Inisialisasi State Session
 if "data_log" not in st.session_state:
@@ -41,14 +54,11 @@ class ZFIntegratedEngine:
         
         diff = abs(current_price - previous_price)
         is_noise = diff < threshold
-        # Jika dianggap noise mikro, tahan harga di posisi sebelumnya
         filtered_price = previous_price if is_noise else current_price
         return filtered_price, is_noise
 
     def calculate_zf_score(self, price_deviation: float) -> float:
         """Teknologi No. 33: ZF-Score Engine (Skala 0 - 1)"""
-        # Semakin kecil deviasi, semakin stabil sistem (mendekati 0.0)
-        # Jika anomali/volatilitas tinggi, skor mendekati 1.0
         score = 1.0 / (1.0 + (1.0 / (max(price_deviation, 0.00001))))
         return round(min(max(score, 0.0), 1.0), 4)
 
@@ -65,7 +75,7 @@ class ZFIntegratedEngine:
 
 engine = ZFIntegratedEngine()
 
-# Layout Utama Dasbor (3 Kolom Utama)
+# Layout Utama Dasbor (3 Kolom Metrik di Atas)
 col_top1, col_top2, col_top3 = st.columns(3)
 
 with col_top1:
@@ -128,34 +138,37 @@ def fetch_and_process(symbol):
         st.warning(f"Menunggu sinkronisasi jaringan: {e}")
     return None
 
-# Tombol Kontrol Utama
+# Tombol Kontrol Utama (Toggle)
 run_engine = st.toggle("Aktifkan Ekosistem ZF-Core (Omni Mode)", value=False)
 
 if run_engine:
-    while run_engine:
-        packet = fetch_and_process(selected_pair)
-        if packet:
-            # Masukkan ke log riwayat
-            st.session_state.data_log.insert(0, packet)
-            if len(st.session_state.data_log) > 15:
-                st.session_state.data_log.pop()
-            
-            # Perbarui Metrik Utama di Atas
-            metric_time.metric("Time-Lock (us)", packet["timestamp_us"])
-            metric_zf.metric("ZF-Score Stabilitas", packet["zf_score"], delta="Aman (<0.99)" if packet["zf_score"] < 0.99 else "Kritis!")
-            metric_noise.metric("Status Noise Jitter", packet["filtered_noise"])
-            
-            # Perbarui Tabel Riwayat & Depth Mapper
-            df = pd.DataFrame(st.session_state.data_log)
-            table_placeholder.dataframe(df, use_container_width=True)
-            
-            depth_placeholder.json({
-                "Bid Volume": packet["bid_vol"],
-                "Ask Volume": packet["ask_vol"],
-                "Bid/Ask Imbalance Ratio": packet["ratio"]
-            })
-            
-        time.sleep(refresh_rate)
-        st.rerun()
+    st.info("Engine aktif dan menyinkronkan stempel waktu temporal...")
+    
+    # Ambil data 1 siklus per eksekusi (Stabil, tanpa infinite while loop)
+    packet = fetch_and_process(selected_pair)
+    if packet:
+        # Masukkan ke log riwayat
+        st.session_state.data_log.insert(0, packet)
+        if len(st.session_state.data_log) > 15:
+            st.session_state.data_log.pop()
+        
+        # Perbarui Metrik Utama di Atas
+        metric_time.metric("Time-Lock (us)", packet["timestamp_us"])
+        metric_zf.metric("ZF-Score Stabilitas", packet["zf_score"], delta="Aman (<0.99)" if packet["zf_score"] < 0.99 else "Kritis!")
+        metric_noise.metric("Status Noise Jitter", packet["filtered_noise"])
+        
+        # Perbarui Tabel Riwayat & Depth Mapper
+        df = pd.DataFrame(st.session_state.data_log)
+        table_placeholder.dataframe(df, use_container_width=True)
+        
+        depth_placeholder.json({
+            "Bid Volume": packet["bid_vol"],
+            "Ask Volume": packet["ask_vol"],
+            "Bid/Ask Imbalance Ratio": packet["ratio"]
+        })
+    
+    # Jeda sesuai interval, lalu refresh halaman secara aman
+    time.sleep(refresh_rate)
+    st.rerun()
 else:
     st.info("Nyalakan tombol sakelar di atas untuk mengaktifkan pemrosesan serentak 4 modul teknologi ZF-Core.")
